@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name:       Sikora TagDiv Post Views Sorter (Admin)
+ * Plugin Name:       Sikora TagDiv Post Views Sorter
  * Description:       Makes the TagDiv Newspaper theme's "Views" column on the WordPress admin Posts page sortable.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Author:            <a href="https://SikoraCollective.com/">Sikora Collective</a>
  * Requires at least: 5.0
  * Requires PHP:      7.0
@@ -69,11 +69,10 @@ final class Sikora_TagDiv_Post_Views_Sorter {
 		}
 
 		add_action( 'current_screen', array( __CLASS__, 'register_screen_hooks' ) );
-		add_filter( 'posts_orderby', array( __CLASS__, 'filter_posts_orderby' ), 10, 2 );
 	}
 
 	/**
-	 * On the Posts list screen, hooks in the sortable column registration.
+	 * On the Posts list screen, hooks in sortable columns and ORDER BY filtering.
 	 *
 	 * @param WP_Screen $screen The current admin screen.
 	 * @return void
@@ -85,6 +84,7 @@ final class Sikora_TagDiv_Post_Views_Sorter {
 
 		// Run last so nothing registered after us can drop the Views column again.
 		add_filter( "manage_{$screen->id}_sortable_columns", array( __CLASS__, 'add_sortable_column' ), PHP_INT_MAX );
+		add_filter( 'posts_orderby', array( __CLASS__, 'filter_posts_orderby' ), 10, 2 );
 	}
 
 	/**
@@ -94,7 +94,8 @@ final class Sikora_TagDiv_Post_Views_Sorter {
 	 *   1. The theme's own key (`td_post_views`).
 	 *   2. A column whose visible label is "Views" (HTML, icons and extra
 	 *      whitespace are ignored), in case the key differs between versions.
-	 *   3. A column whose key contains "view" (for example `post_views`).
+	 *   3. A column whose key has a "view"/"views" segment (for example
+	 *      `post_views`), not a substring match like `preview`.
 	 *
 	 * @param array $columns Column key => column label.
 	 * @return string|null The column key, or null if no Views column exists.
@@ -112,7 +113,9 @@ final class Sikora_TagDiv_Post_Views_Sorter {
 		}
 
 		foreach ( array_keys( $columns ) as $key ) {
-			if ( false !== stripos( (string) $key, 'view' ) ) {
+			$key = (string) $key;
+			// Match whole key segments only (avoids false positives like "preview").
+			if ( preg_match( '/(^|_)(post_)?views?($|_)/i', $key ) ) {
 				return $key;
 			}
 		}
@@ -163,10 +166,15 @@ final class Sikora_TagDiv_Post_Views_Sorter {
 	public static function filter_posts_orderby( $orderby, $query ) {
 		global $wpdb, $pagenow;
 
+		$post_type = $query->get( 'post_type' );
+
 		if (
 			'edit.php' !== $pagenow
+			|| ! $query->is_admin
 			|| ! $query->is_main_query()
+			|| ! current_user_can( 'edit_posts' )
 			|| self::ORDERBY !== $query->get( 'orderby' )
+			|| ( ! empty( $post_type ) && array( 'post' ) !== (array) $post_type )
 		) {
 			return $orderby;
 		}
