@@ -19,7 +19,7 @@
 - When the plugin is deleted, it should be completely removed from the WordPress installation.
 
 ### WordPress plugin metadata:
-- Name: Sikora TagDiv Post Views Sorter (Admin)
-- Version: 1.0.0
+- Name: Sikora TagDiv Post Views Sorter
+- Version: 1.0.1
 - Author: <a href="https://SikoraCollective.com/">Sikora Collective</a>
 - Description: Makes the TagDiv Newspaper theme's "Views" column on the WordPress admin Posts page sortable.
